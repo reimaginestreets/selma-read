@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selma — a slow reading journal</title>
+  <meta name="description" content="A shelf of the books you've read, and what you want to remember from them.">
+  <meta name="theme-color" content="#F6F3EE">
+  <link rel="icon" href="selma-read.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Slow reading">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="home-link" href="../selma/">← All Selma journals</a>
+    <div class="brand">
+      <img class="selma" src="selma-read.svg" width="56" height="56" alt="Selma the Snail, with a book for a shell">
+      <div>
+        <h1>Selma</h1>
+        <p>a slow reading journal</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab" data-view="shelf" aria-current="page">Shelf</button>
+      <button class="tab" data-view="commonplace">Commonplace book</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Shelf -->
+    <section id="view-shelf">
+      <div class="shelf-top">
+        <button class="btn primary" data-action="add-book">Shelve a book</button>
+        <input type="search" id="search" placeholder="Find a book, an author, a note" autocomplete="off" aria-label="Find a book">
+      </div>
+      <div id="nudges"></div>
+      <div id="filter"></div>
+      <div id="shelves"></div>
+    </section>
+
+    <!-- Commonplace book: every note, gathered in one place -->
+    <section id="view-commonplace" hidden>
+      <p class="intro">Everything you wanted to remember, from every book, in one place. Newest thoughts first.</p>
+      <div id="commonplace"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>No ratings, no counts, no goals. Everything stays in this browser. <span id="backup-status"></span></p>
+    <a class="link" href="../selma-work/">Slow work journal</a>
+    <a class="link" href="../selma-time/">Slow time journal</a>
+    <div class="backup">
+      <button class="btn quiet" data-action="export">Save a backup</button>
+      <button class="btn quiet" data-action="import">Restore from backup</button>
+      <button class="btn quiet" data-action="import-list">Bring in books from Libby or Goodreads</button>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+      <input type="file" id="list-file" accept=".csv,.json,text/csv,application/json" hidden>
+    </div>
+  </footer>
+
+  <!-- A book pulled from the shelf -->
+  <dialog id="book-dialog" class="wide">
+    <div id="book-card"></div>
+  </dialog>
+
+  <!-- Shelving a book, or changing its details -->
+  <dialog id="edit-dialog">
+    <form id="edit-form">
+      <h2 id="edit-heading">Shelve a book</h2>
+      <input type="hidden" name="id">
+      <label>Title
+        <input name="title" required autocomplete="off" maxlength="200">
+      </label>
+      <label>Author <span class="optional">optional</span>
+        <input name="author" autocomplete="off" maxlength="160" list="authors">
+        <datalist id="authors"></datalist>
+      </label>
+      <label>When did you finish it? <span class="optional">optional</span>
+        <input name="read" type="date">
+      </label>
+      <fieldset class="segmented" id="edit-tags">
+        <legend>Tags <span class="optional">as many as apply</span></legend>
+      </fieldset>
+      <label class="new-tag">A new tag <span class="optional">optional</span>
+        <input name="newTag" autocomplete="off" maxlength="30" placeholder="e.g. fiction, cities, care">
+      </label>
+      <label class="check"><input type="checkbox" name="fav"> <span>♥ A favourite</span></label>
+      <div id="first-notes">
+        <label><span class="prompt-label">What do you want to remember from this book?</span> <span class="optional">optional</span>
+          <textarea name="remember" rows="4"></textarea>
+        </label>
+        <label><span class="prompt-label" id="second-prompt"></span> <span class="optional">optional</span>
+          <button type="button" class="link small" data-action="shuffle-prompt">another question</button>
+          <textarea name="second" rows="3"></textarea>
+        </label>
+      </div>
+      <label>Notes anywhere else? <span class="optional">optional</span>
+        <input name="elsewhere" autocomplete="off" maxlength="120" placeholder="e.g. green notebook, p. 40–52; Marginalia">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger" data-action="remove-book" id="remove-book" hidden>Take it off the shelf</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn quiet" data-action="close-dialog">Cancel</button>
+        <button type="submit" class="btn primary" id="edit-submit">Shelve it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Bringing in a list from Libby or Goodreads -->
+  <dialog id="import-dialog" class="wide">
+    <form id="import-form">
+      <h2>Bring in books</h2>
+      <p class="for-day" id="import-from"></p>
+      <p class="hint">Untick anything you didn't finish or don't want on the shelf.</p>
+      <div class="import-tools">
+        <button type="button" class="link small" data-action="import-all">Tick all</button>
+        <button type="button" class="link small" data-action="import-none">Untick all</button>
+      </div>
+      <ul id="import-list"></ul>
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn quiet" data-action="close-dialog">Cancel</button>
+        <button type="submit" class="btn primary" id="import-submit">Shelve them</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
