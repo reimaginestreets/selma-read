@@ -158,10 +158,11 @@ function spineHTML(book) {
   </button></div>`;
 }
 
-const byRead = (a, b) => (a.read || '').localeCompare(b.read || '') || a.added - b.added;
+// Newest first: by the day finished, then by when it was shelved.
+const byRead = (a, b) => (b.read || '').localeCompare(a.read || '') || b.added - a.added;
 
-// Shelves by year: the newest year on top; within a year, books stand in the order they were finished,
-// so a newly finished book goes on the right-hand end of the top shelf.
+// Shelves by year: the newest year on top; within a year, the most recently finished book stands first,
+// at the left-hand end of the top shelf.
 function groups(books) {
   if (shelfFilter.arrange === 'author') {
     const sorted = [...books].sort((a, b) =>
