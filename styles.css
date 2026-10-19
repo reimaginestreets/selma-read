@@ -210,7 +210,7 @@ dialog textarea { resize: vertical; line-height: 1.5; }
 }
 .slot { height: var(--slot); padding-bottom: var(--plank-h); display: flex; align-items: flex-end; }
 
-/* A spine. Colour, height and width come from the book; the title runs top to bottom. */
+/* A spine. Color, height and width come from the book; the title runs top to bottom. */
 .spine {
   --bg: var(--sage);
   --fg: #1F2A2E;
@@ -254,10 +254,11 @@ dialog textarea { resize: vertical; line-height: 1.5; }
 .spine .fav {
   position: absolute;
   bottom: 13px; left: 0; right: 0;
-  text-align: center;
-  font-size: 11px;
-  line-height: 1;
+  display: flex;
+  justify-content: center;
+  font-size: 12px;
 }
+.spine .heart-svg path { fill: currentColor; stroke: none; }
 .spine.has-fav { padding-bottom: 28px; }
 /* A book with notes has a small clay ribbon peeking out of the top. */
 .spine .ribbon {
@@ -372,13 +373,49 @@ footer .backup .btn { font-size: 14px; padding: 7px 14px; }
 
 [hidden] { display: none !important; }
 
+/* Hearts are drawn, not typed: an outline, filled in for a favorite. */
+.heart-svg { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; }
+.heart-svg path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.heart { display: grid; place-items: center; font-size: 20px; }
+.heart[aria-pressed="true"] .heart-svg path, .cp-fav .heart-svg path, #filter .heart-svg path { fill: currentColor; }
+.cp-fav { color: var(--clay-deep); font-size: 17px; }
+#filter .heart-svg { color: var(--clay-deep); }
+.heart-toggle { display: inline-flex !important; align-items: center; gap: 10px; cursor: pointer; justify-self: start; }
+.heart-toggle input { position: absolute; opacity: 0; width: 0; }
+.heart-mark {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: no-repeat center / 20px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z' fill='none' stroke='%235E6A6F' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.heart-toggle:hover .heart-mark { border-color: var(--clay); }
+.heart-toggle input:checked + .heart-mark {
+  border-color: var(--clay);
+  background-color: var(--clay-soft);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z' fill='%238A5136' stroke='%238A5136' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.heart-toggle input:focus-visible + .heart-mark { outline: 2px solid var(--sage); outline-offset: 2px; }
+
+/* Questions: check one and a box opens under it. */
+.questions { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; min-width: 0; }
+.questions legend { font-size: 14px; font-weight: 500; padding: 0; margin-bottom: 8px; }
+.question textarea, #first-notes .question textarea { display: block; margin: 4px 0 10px 26px; width: calc(100% - 26px); }
+.q-check { display: flex !important; gap: 10px; align-items: baseline; font-weight: 400 !important; font-size: 15px !important; cursor: pointer; padding: 3px 0; }
+.q-check input { accent-color: var(--sage-deep); width: 16px; height: 16px; flex: none; position: relative; top: 2px; margin: 0; }
+.q-check input:checked + span { color: var(--sage-text); font-weight: 500; }
+.q-edit { font-size: 12px !important; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.q-edit textarea { text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); margin-top: 6px; display: block; width: 100%; }
+
+/* Measures spine titles; never seen. */
+.ruler { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: nowrap; font: 500 14px/1 var(--serif); }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
 
 @media (max-width: 560px) {
-  .shelf { --slot: 190px; padding: 0 4px; }
-  .spine { height: calc(var(--h, 170px) * .86); }
+  .shelf { padding: 0 4px; }
   .book .inner { padding: 20px 18px; }
   .book h2 { font-size: 24px; }
   #filter .arrange { margin-left: 0; }

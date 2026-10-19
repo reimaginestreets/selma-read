@@ -1,12 +1,12 @@
-// Selma — a slow reading journal.
+// Selma — a slow book journal.
 // A shelf of the books you've read. Pull one down to see, or add, what you want to remember from it.
 // Everything is stored in this browser (localStorage); there is no server.
 
 const STORE_KEY = 'selma-read.v1';
 const BACKUP_KEY = 'selma-read.backup'; // the day the last backup was saved
 
-// Spine colours, drawn from the other Selma journals. Repeats are fine; neighbours differ.
-// Each pairs a cloth with a title colour that reads at 4.5:1 or better.
+// Spine colors, drawn from the other Selma journals. Repeats are fine; neighbors differ.
+// Each pairs a cloth with a title color that reads at 4.5:1 or better.
 const CLOTHS = [
   { bg: '#8FA596', fg: '#1F2A2E' }, // sage
   { bg: '#C98B6B', fg: '#1F2A2E' }, // clay
@@ -36,14 +36,16 @@ const PROMPTS = [
   'What was it like to be inside this book?',
   'Will you do anything differently because of it?',
 ];
-const JUST_A_NOTE = ''; // a note with no question
+const NOTE_ONLY = 'Just a note, no question';
+
+// A heart drawn in line, so it looks the same on every device; filled for a favorite.
+const HEART = '<svg class="heart-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>';
 
 const state = loadState();
 const shelfFilter = { tag: '', q: '', arrange: 'year' };
 let view = 'shelf';
 let openId = null;     // the book pulled from the shelf
 let jotting = null;    // { id } of the note being edited, or {} for a new one
-let secondPrompt = PROMPTS[0];
 let importItems = [];
 
 const $ = (sel) => document.querySelector(sel);
@@ -74,10 +76,6 @@ function save() {
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const pick = (list, not) => {
-  const options = list.filter((x) => x !== not);
-  return options[Math.floor(Math.random() * options.length)];
-};
 
 function dayKey(date = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
@@ -87,7 +85,7 @@ function keyDate(key) {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
-const longDate = (key) => keyDate(key).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+const longDate = (key) => keyDate(key).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 const daysBetween = (a, b) => Math.round((keyDate(b) - keyDate(a)) / 864e5);
 
 const bookById = (id) => state.books.find((b) => b.id === id);
@@ -129,17 +127,34 @@ function matches(book) {
   return q.split(/\s+/).every((word) => text.includes(word));
 }
 
-function spineHTML(book) {
+// The title as a spine would show it: before any subtitle or series.
+const shortTitle = (title) => title.split(/:|\s\(/)[0].trim() || title;
+
+// Measures a title in the spine's own type, so each book is just tall enough for it.
+const ruler = Object.assign(document.createElement('span'), { className: 'ruler' });
+document.body.append(ruler);
+function titleLength(text) {
+  ruler.textContent = text;
+  return ruler.getBoundingClientRect().width;
+}
+
+function spineSize(book) {
   const h = hash(book.id);
-  const height = 150 + (h % 44);
-  const width = Math.round(30 + Math.min(14, book.title.length * 0.3) + ((h >> 6) % 6));
+  const room = 34 + (book.fav ? 14 : 0); // the bands at top and bottom, and the heart
+  const height = Math.min(262, Math.max(112, Math.ceil(titleLength(shortTitle(book.title))) + room + (h % 10)));
+  const width = 32 + ((h >> 6) % 11);
+  return { height, width };
+}
+
+function spineHTML(book) {
+  const { height, width } = spineSize(book);
   const c = cloth(book);
-  const label = `${book.title}${book.author ? `, ${book.author}` : ''}${book.fav ? ' (a favourite)' : ''}`;
+  const label = `${book.title}${book.author ? `, ${book.author}` : ''}${book.fav ? ' (a favorite)' : ''}`;
   return `<div class="slot"><button class="spine${book.fav ? ' has-fav' : ''}" data-action="pull" data-id="${book.id}"
       style="--bg:${c.bg};--fg:${c.fg};--h:${height}px;--w:${width}px" aria-label="${esc(label)}" title="${esc(label)}">
     ${book.notes.length ? '<i class="ribbon" aria-hidden="true"></i>' : ''}
-    <span class="t" aria-hidden="true">${esc(book.title)}</span>
-    ${book.fav ? '<span class="fav" aria-hidden="true">♥</span>' : ''}
+    <span class="t" aria-hidden="true">${esc(shortTitle(book.title))}</span>
+    ${book.fav ? `<span class="fav">${HEART}</span>` : ''}
   </button></div>`;
 }
 
@@ -174,11 +189,11 @@ function groups(books) {
 
 function renderFilter() {
   const used = state.tags.filter((t) => state.books.some((b) => b.tags.includes(t)));
-  const options = [['', 'All books'], ...(state.books.some((b) => b.fav) ? [['♥', '♥ Favourites']] : []), ...used.map((t) => [t, t])];
+  const options = [['', 'All books'], ...(state.books.some((b) => b.fav) ? [['♥', 'Favorites']] : []), ...used.map((t) => [t, t])];
   if (!options.some(([v]) => v === shelfFilter.tag)) shelfFilter.tag = '';
   $('#filter').innerHTML = state.books.length ? `
     <div class="segmented" role="radiogroup" aria-label="Show">
-      ${options.map(([value, name]) => `<label><input type="radio" name="tag" value="${esc(value)}" ${value === shelfFilter.tag ? 'checked' : ''}><span>${esc(name)}</span></label>`).join('')}
+      ${options.map(([value, name]) => `<label><input type="radio" name="tag" value="${esc(value)}" ${value === shelfFilter.tag ? 'checked' : ''}><span>${value === '♥' ? HEART + ' ' : ''}${esc(name)}</span></label>`).join('')}
     </div>
     <div class="arrange">Arrange by
       <button data-action="arrange" data-by="year" aria-pressed="${shelfFilter.arrange === 'year'}">year</button>
@@ -211,7 +226,7 @@ function renderShelf() {
   el.innerHTML = groups(books).map(({ name, list }) => `
     <section class="shelf-group">
       <h2>${esc(name)}</h2>
-      <div class="shelf">${list.map(spineHTML).join('')}</div>
+      <div class="shelf" style="--slot:${Math.max(...list.map((b) => spineSize(b).height)) + 30}px">${list.map(spineHTML).join('')}</div>
     </section>`).join('');
 }
 
@@ -229,23 +244,32 @@ function noteHTML(note, { tools = true } = {}) {
   </li>`;
 }
 
-function promptOptions(current) {
-  const list = [REMEMBER, ...PROMPTS];
-  if (current && !list.includes(current)) list.push(current);
-  return list.map((q) => `<option ${q === current ? 'selected' : ''}>${esc(q)}</option>`).join('')
-    + `<option value="" ${current === JUST_A_NOTE ? 'selected' : ''}>Just a note, no question</option>`;
+// A list of questions, each with a box for an answer that opens when the question is checked.
+function questionsHTML(list, checked = []) {
+  return list.map((q, i) => `<div class="question">
+    <label class="q-check"><input type="checkbox" name="ask" value="${i}" ${checked.includes(q) ? 'checked' : ''}><span>${esc(q)}</span></label>
+    <textarea name="answer-${i}" rows="3" aria-label="${esc(q)}" ${checked.includes(q) ? '' : 'hidden'}></textarea>
+  </div>`).join('');
 }
+
+// The answers written under checked questions. "Just a note" is kept with no question.
+function answers(form, list) {
+  return [...form.querySelectorAll('[name="ask"]:checked')]
+    .map((box) => ({ q: list[box.value] === NOTE_ONLY ? '' : list[box.value], text: form.querySelector(`[name="answer-${box.value}"]`).value.trim() }))
+    .filter((a) => a.text);
+}
+
+const jotList = () => [REMEMBER, ...PROMPTS, NOTE_ONLY];
 
 function jotHTML(book) {
   const editing = jotting.id ? book.notes.find((n) => n.id === jotting.id) : null;
-  // A book's first note answers the main question; after that, a different question each time.
-  const asked = editing ? editing.q : book.notes.some((n) => n.q === REMEMBER) ? pick(PROMPTS) : REMEMBER;
+  // A book's first note answers the main question, so it starts out checked.
+  const fields = editing
+    ? `<label class="q-edit">${esc(editing.q || 'A note')}<textarea name="text" rows="5">${esc(editing.text)}</textarea></label>`
+    : `<fieldset class="questions"><legend>Do any of these questions resonate? <span class="optional">check as many as you like</span></legend>
+        ${questionsHTML(jotList(), book.notes.some((n) => n.q === REMEMBER) ? [] : [REMEMBER])}</fieldset>`;
   return `<form class="jot" id="jot-form">
-    <div class="row">
-      <select name="q" aria-label="Question">${promptOptions(asked)}</select>
-      <button type="button" class="link small" data-action="jot-shuffle">another question</button>
-    </div>
-    <textarea name="text" rows="5" required aria-label="Your note">${esc(editing?.text || '')}</textarea>
+    ${fields}
     <div class="actions">
       <button type="button" class="btn quiet" data-action="jot-cancel">Cancel</button>
       <button type="submit" class="btn primary">Keep it</button>
@@ -266,7 +290,7 @@ function renderBook() {
           ${book.author ? `<p class="by">${esc(book.author)}</p>` : ''}
           <p class="when">${book.read ? `Finished ${longDate(book.read)}` : 'Finished some time ago'}</p>
         </div>
-        <button class="heart" data-action="fav" aria-pressed="${!!book.fav}" aria-label="A favourite" title="${book.fav ? 'A favourite' : 'Mark as a favourite'}">${book.fav ? '♥' : '♡'}</button>
+        <button class="heart" data-action="fav" aria-pressed="${!!book.fav}" aria-label="A favorite" title="${book.fav ? 'A favorite' : 'Mark as a favorite'}">${HEART}</button>
       </div>
       ${book.tags.length ? `<ul class="tags">${book.tags.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       ${notes.length ? `<ul class="notes">${notes.map((n) => noteHTML(n)).join('')}</ul>`
@@ -281,7 +305,7 @@ function renderBook() {
       </div>
     </div>
   </article>`;
-  if (jotting) $('#jot-form textarea').focus();
+  if (jotting) $('#jot-form textarea:not([hidden])')?.focus();
 }
 
 function pull(id) {
@@ -301,20 +325,22 @@ bookDialog.addEventListener('close', () => {
 
 // A click on the dim backdrop puts the book back, unless a note is half written.
 bookDialog.addEventListener('click', (event) => {
-  if (event.target === bookDialog && !$('#jot-form textarea')?.value.trim()) bookDialog.close();
+  if (event.target === bookDialog && ![...document.querySelectorAll('#jot-form textarea')].some((t) => t.value.trim())) bookDialog.close();
 });
 
 document.addEventListener('submit', (event) => {
   if (event.target.id !== 'jot-form') return;
   event.preventDefault();
   const book = bookById(openId);
-  const form = new FormData(event.target);
-  const text = form.get('text').trim();
-  if (!text) return;
   if (jotting.id) {
-    Object.assign(book.notes.find((n) => n.id === jotting.id), { q: form.get('q'), text });
+    const text = event.target.text.value.trim();
+    if (!text) return toast('Write something first, or remove the note.');
+    book.notes.find((n) => n.id === jotting.id).text = text;
   } else {
-    book.notes.push({ id: newId(), q: form.get('q'), text, at: Date.now() });
+    const written = answers(event.target, jotList());
+    if (!written.length) return toast('Check a question and write something first.');
+    const now = Date.now();
+    written.forEach((a, i) => book.notes.push({ id: newId(), ...a, at: now + i }));
   }
   jotting = null;
   save();
@@ -345,8 +371,7 @@ function openEdit(book) {
   editForm.read.value = isNew ? dayKey() : book.read || '';
   editForm.fav.checked = !!book?.fav;
   editForm.elsewhere.value = book?.elsewhere || '';
-  secondPrompt = pick(PROMPTS, secondPrompt);
-  $('#second-prompt').textContent = secondPrompt;
+  $('#edit-questions').innerHTML = `<legend>Do any of these questions resonate? <span class="optional">check as many as you like</span></legend>${questionsHTML(PROMPTS)}`;
   editDialog.showModal();
 }
 
@@ -375,7 +400,7 @@ editForm.addEventListener('submit', (event) => {
     const now = Date.now();
     const notes = [];
     if (form.get('remember').trim()) notes.push({ id: newId(), q: REMEMBER, text: form.get('remember').trim(), at: now });
-    if (form.get('second').trim()) notes.push({ id: newId(), q: secondPrompt, text: form.get('second').trim(), at: now + 1 });
+    answers(editForm, PROMPTS).forEach((a, i) => notes.push({ id: newId(), ...a, at: now + 1 + i }));
     state.books.push({ id: newId(), ...details, notes, added: now, cloth: nextCloth() });
     toast('On the shelf.');
   }
@@ -392,7 +417,7 @@ function renderCommonplace() {
   const books = state.books.filter((b) => b.notes.length).sort((a, b) => latest(b) - latest(a));
   $('#commonplace').innerHTML = books.length ? books.map((book) => `
     <article class="cp-book" style="--book:${cloth(book).bg}">
-      <h3><button data-action="pull" data-id="${book.id}"><span class="swatch" aria-hidden="true"></span>${esc(book.title)}</button>${book.fav ? ' <span aria-label="a favourite">♥</span>' : ''}</h3>
+      <h3><button data-action="pull" data-id="${book.id}"><span class="swatch" aria-hidden="true"></span>${esc(book.title)}</button>${book.fav ? ` <span class="cp-fav" title="A favorite">${HEART}</span>` : ''}</h3>
       <p class="by">${esc([book.author, book.read ? book.read.slice(0, 4) : ''].filter(Boolean).join(' · '))}</p>
       <ul class="notes">${[...book.notes].sort((a, b) => a.at - b.at).map((n) => noteHTML(n, { tools: false })).join('')}</ul>
     </article>`).join('')
@@ -444,10 +469,6 @@ document.addEventListener('click', (event) => {
   }
   else if (action === 'jot') { jotting = {}; renderBook(); }
   else if (action === 'jot-cancel') { jotting = null; renderBook(); }
-  else if (action === 'jot-shuffle') {
-    const select = $('#jot-form select');
-    select.value = pick(PROMPTS, select.value);
-  }
   else if (action === 'edit-note') { jotting = { id: el.dataset.id }; renderBook(); }
   else if (action === 'remove-note') {
     if (!confirm('Remove this note?')) return;
@@ -466,10 +487,6 @@ document.addEventListener('click', (event) => {
     bookDialog.close();
     RENDER[view]();
     toast('Taken off the shelf.');
-  }
-  else if (action === 'shuffle-prompt') {
-    secondPrompt = pick(PROMPTS, secondPrompt);
-    $('#second-prompt').textContent = secondPrompt;
   }
   else if (action === 'export') exportBackup();
   else if (action === 'import') $('#import-file').click();
@@ -492,6 +509,12 @@ document.addEventListener('change', (event) => {
     renderShelf();
   }
   if (event.target.closest('#import-list')) countImport();
+  // Checking a question opens a box under it for the answer.
+  if (event.target.name === 'ask') {
+    const area = event.target.closest('.question').querySelector('textarea');
+    area.hidden = !event.target.checked;
+    if (event.target.checked) area.focus();
+  }
 });
 
 $('#search').addEventListener('input', (event) => {
@@ -606,7 +629,7 @@ $('#list-file').addEventListener('change', async (event) => {
   $('#import-list').innerHTML = importItems.map((b, i) => `<li class="${b.have ? 'have' : ''}"><label>
     <input type="checkbox" value="${i}" ${b.have ? 'disabled' : 'checked'}>
     <span class="it"><b>${esc(b.title)}</b>${b.author ? ` <span>${esc(b.author)}</span>` : ''}${b.have ? ' <span>· already on the shelf</span>' : ''}</span>
-    <span class="d">${b.read ? esc(keyDate(b.read).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })) : ''}</span>
+    <span class="d">${b.read ? esc(keyDate(b.read).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })) : ''}</span>
   </label></li>`).join('');
   countImport();
   importDialog.showModal();
@@ -674,7 +697,7 @@ $('#import-file').addEventListener('change', async (event) => {
     data = parsed.app === 'selma-read' ? parsed.data : parsed;
     if (!Array.isArray(data.books)) throw new Error();
   } catch {
-    return toast('That file is not a Selma reading journal backup.');
+    return toast('That file is not a Selma book journal backup.');
   }
   if (!confirm(`Replace everything on this device with this backup? It holds ${data.books.length} books. What is here now will be gone.`)) return;
   for (const key of Object.keys(state)) delete state[key];
@@ -686,6 +709,8 @@ $('#import-file').addEventListener('change', async (event) => {
 
 renderBackup();
 show('shelf');
+// Spines are measured in the shelf's typeface, so measure again once it has loaded.
+document.fonts?.ready.then(() => RENDER[view]());
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

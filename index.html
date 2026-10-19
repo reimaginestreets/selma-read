@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Selma — a slow reading journal</title>
+  <title>Selma — a slow book journal</title>
   <meta name="description" content="A shelf of the books you've read, and what you want to remember from them.">
   <meta name="theme-color" content="#F6F3EE">
   <link rel="icon" href="selma-read.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <meta name="apple-mobile-web-app-title" content="Slow reading">
+  <meta name="apple-mobile-web-app-title" content="Slow books">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
       <img class="selma" src="selma-read.svg" width="56" height="56" alt="Selma the Snail, with a book for a shell">
       <div>
         <h1>Selma</h1>
-        <p>a slow reading journal</p>
+        <p>a slow book journal</p>
       </div>
     </div>
     <nav class="tabs" aria-label="Sections">
@@ -87,20 +87,17 @@
         <legend>Tags <span class="optional">as many as apply</span></legend>
       </fieldset>
       <label class="new-tag">A new tag <span class="optional">optional</span>
-        <input name="newTag" autocomplete="off" maxlength="30" placeholder="e.g. fiction, cities, care">
+        <input name="newTag" autocomplete="off" maxlength="30" placeholder="e.g., strong ladies, cities, care, beautiful">
       </label>
-      <label class="check"><input type="checkbox" name="fav"> <span>♥ A favourite</span></label>
+      <label class="heart-toggle"><input type="checkbox" name="fav"><span class="heart-mark" aria-hidden="true"></span> A favorite</label>
       <div id="first-notes">
         <label><span class="prompt-label">What do you want to remember from this book?</span> <span class="optional">optional</span>
           <textarea name="remember" rows="4"></textarea>
         </label>
-        <label><span class="prompt-label" id="second-prompt"></span> <span class="optional">optional</span>
-          <button type="button" class="link small" data-action="shuffle-prompt">another question</button>
-          <textarea name="second" rows="3"></textarea>
-        </label>
+        <fieldset class="questions" id="edit-questions"></fieldset>
       </div>
       <label>Notes anywhere else? <span class="optional">optional</span>
-        <input name="elsewhere" autocomplete="off" maxlength="120" placeholder="e.g. green notebook, p. 40–52; Marginalia">
+        <input name="elsewhere" autocomplete="off" maxlength="120" placeholder="e.g., Lochby; Marginalia">
       </label>
       <div class="dialog-actions">
         <button type="button" class="btn danger" data-action="remove-book" id="remove-book" hidden>Take it off the shelf</button>

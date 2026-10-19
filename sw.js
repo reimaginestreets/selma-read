@@ -22,7 +22,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      // Only clear out older copies of the reading journal; the other Selma journals keep theirs.
+      // Only clear out older copies of the book journal; the other Selma journals keep theirs.
       .then((names) => Promise.all(
         names.filter((name) => name.startsWith('selma-read-') && name !== CACHE).map((name) => caches.delete(name))
       ))

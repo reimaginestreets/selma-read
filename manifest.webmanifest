@@ -1,6 +1,6 @@
 {
-  "name": "Selma — a slow reading journal",
-  "short_name": "Slow reading",
+  "name": "Selma — a slow book journal",
+  "short_name": "Slow books",
   "description": "A shelf of the books you’ve read, and what you want to remember from them.",
   "start_url": ".",
   "scope": ".",
